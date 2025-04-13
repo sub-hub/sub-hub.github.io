@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CharX Validator (Standalone)</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f4f4; }
+        .container { max-width: 960px; margin: 1vh auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); text-align: center; }
+        h1 { margin-top: 0; }
+        p { color: #555; }
+        /* Style the custom file input */
+        .file-input-wrapper {
+            margin: 20px 0;
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack items vertically */
+            align-items: center; /* Center items horizontally */
+            gap: 10px; /* Add space between items */
+        }
+        input[type="file"] { display: none; } /* Hide the default input */
+        .file-input-label {
+            display: inline-block; /* Keep inline-block for padding */
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-right: 10px; /* Space between label and button */
+        }
+        .file-input-label:hover { background-color: #0056b3; }
+        #fileNameDisplay { margin-left: 10px; color: #666; }
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        button:not(:disabled):hover { background-color: #218838; }
+        h2 { margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px; }
+        #results { margin-top: 10px; padding: 15px; border: 1px solid #ccc; background-color: #f9f9f9; white-space: pre-wrap; font-family: monospace; max-height: 400px; overflow-y: auto; text-align: left; border-radius: 5px; }
+        #results p { margin-bottom: 8px; line-height: 1.4; } /* Improve log readability */
+        .error { color: red; font-weight: bold; } /* Keep error style */
+        .success { color: green; font-weight: bold; } /* Keep success style */
+        .log-file { font-style: italic; color: #777; font-size: 0.9em; } /* Adjust log file style */
+        .log-ok { color: green; }
+        .log-error { color: red; font-size: 1.1em; } /* Increase error font size */
+        .summary-message { /* Style for the final summary */
+            margin-top: 15px !important; /* Ensure space above */
+            padding: 10px;
+            border: 1px solid;
+            text-align: center;
+            font-weight: bold;
+        }
+        .summary-message.success { background-color: #e6ffed; border-color: #5cb85c; color: #3c763d; }
+        .summary-message.error { background-color: #f2dede; border-color: #ebccd1; color: #a94442; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>CharX / JPEG Validator</h1>
+    <p>Select a .charx or .jpeg file containing CharX data to validate its internal structure.</p>
+
+    <div class="file-input-wrapper">
+        <label for="fileInput" class="file-input-label">Choose File</label>
+        <input type="file" id="fileInput" accept=".charx,.jpeg,.jpg">
+        <span id="fileNameDisplay">No file selected</span>
+        <button id="validateButton" disabled>Validate File</button>
+    </div>
+
+    <h2>Results</h2>
+    <div id="results">Select a file and click "Validate File".</div>
+</div> <!-- Close container -->
+
+    <!-- Load fflate library from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.2/umd/index.js"></script>
+
+    <script>
+    // validator-web.js content
+    // Ensure fflate is loaded (assuming UMD build from index.html)
+    const { Unzip, UnzipInflate } = fflate;
+
+    const fileInput = document.getElementById('fileInput');
+    const validateButton = document.getElementById('validateButton');
+    const resultsDiv = document.getElementById('results');
+    const fileNameDisplay = document.getElementById('fileNameDisplay'); // Get the span element
+
+    let selectedFile = null;
+
+    fileInput.addEventListener('change', (event) => {
+        selectedFile = event.target.files[0];
+        if (selectedFile) {
+            fileNameDisplay.textContent = selectedFile.name; // Update the span with the file name
+            validateButton.disabled = false;
+            // Keep the initial message in results until validation starts
+            // resultsDiv.innerHTML = `Selected file: ${selectedFile.name}. Click "Validate File".`;
+        } else {
+            fileNameDisplay.textContent = 'No file selected'; // Reset the span
+            validateButton.disabled = true;
+            resultsDiv.innerHTML = 'Select a file and click "Validate File".'; // Reset results
+        }
+    });
+
+    validateButton.addEventListener('click', () => {
+        if (!selectedFile) {
+            resultsDiv.textContent = 'Error: No file selected.';
+            return;
+        }
+        validateFile(selectedFile);
+    });
+
+    function logResult(message, type = 'info') {
+        const p = document.createElement('p');
+        p.textContent = message;
+        if (type === 'error') p.classList.add('log-error');
+        if (type === 'ok') p.classList.add('log-ok');
+        if (type === 'file') p.classList.add('log-file');
+        resultsDiv.appendChild(p);
+        resultsDiv.scrollTop = resultsDiv.scrollHeight; // Auto-scroll
+    }
+
+    async function validateFile(file) {
+        resultsDiv.innerHTML = `Validating file: ${file.name}...\n`; // Clear previous results
+        validateButton.disabled = true;
+        fileInput.disabled = true;
+
+        let fileData;
+        try {
+            fileData = await readFileAsArrayBuffer(file);
+            logResult(`Successfully read file (${fileData.byteLength} bytes).`);
+        } catch (err) {
+            logResult(`Error reading file: ${err.message}`, 'error');
+            validateButton.disabled = false;
+            fileInput.disabled = false;
+            return;
+        }
+
+        // --- TODO: JPEG Handling (Same as Node version) ---
+        // Add logic here if JPEGs need special extraction before ZIP processing.
+
+        let hasError = false;
+        let cardManifest = null; // To store parsed card.json
+        const cardJsonChunks = []; // To accumulate card.json data
+        let cardJsonError = null; // To store errors reading/parsing card.json
+        let rawErrorDetails = []; // Store raw error info { uri: string, error: string }
+        const filePromises = []; // Promises for file processing (excluding card.json)
+        let cardJsonPromiseResolver = null;
+        const cardJsonPromise = new Promise(resolve => { cardJsonPromiseResolver = resolve; }); // Promise for card.json processing
+
+        const unzip = new Unzip();
+        unzip.register(UnzipInflate);
+
+        unzip.onfile = (f) => {
+            const internalFileName = f.name;
+            const isCardJson = internalFileName === 'card.json';
+            const fileUri = `embeded://${internalFileName}`; // Construct URI for potential lookup
+
+            logResult(`  [Checking] Internal file: ${internalFileName} (Size: ${f.originalSize ?? 'unknown'})`, 'file');
+
+            // Use the dedicated promise for card.json, others go into filePromises
+            const currentFilePromise = new Promise((resolve) => {
+                let fileHasError = false; // Track error for this specific file
+                const chunks = isCardJson ? cardJsonChunks : []; // Accumulate chunks only for card.json
+
+                f.ondata = (err, chunk, final) => {
+                    // If an error occurred previously for this file, ignore subsequent data/errors
+                    if (fileHasError) return;
+
+                    if (err) {
+                        logResult(`    [Error] ${internalFileName}: ${err.message}`, 'error');
+                        // Store error details, don't log immediately
+                        const errorMsg = `During decompression: ${err.message}`;
+                        rawErrorDetails.push({ uri: fileUri, error: errorMsg }); // Store URI for lookup
+                        hasError = true; // Mark overall error
+                        fileHasError = true; // Mark error for this file
+                        if (isCardJson) cardJsonError = `Error decompressing card.json: ${err.message}`;
+                        resolve(); // Resolve the promise even on error
+                        return;
+                    }
+
+                    // Accumulate chunks if it's card.json
+                    if (isCardJson && chunk) {
+                        chunks.push(chunk);
+                    }
+
+                    // When processing is finished for this file
+                    if (final) {
+                        if (!fileHasError) {
+                            // If it's card.json, parse it
+                            if (isCardJson) {
+                                try {
+                                    // Combine chunks into a single Uint8Array
+                                    let totalLength = 0;
+                                    chunks.forEach(c => totalLength += c.length);
+                                    const combined = new Uint8Array(totalLength);
+                                    let offset = 0;
+                                    chunks.forEach(c => {
+                                        combined.set(c, offset);
+                                        offset += c.length;
+                                    });
+                                    // Decode and parse
+                                    const decoder = new TextDecoder();
+                                    const jsonString = decoder.decode(combined);
+                                    cardManifest = JSON.parse(jsonString);
+                                    logResult(`    [OK] Successfully processed and parsed ${internalFileName}`, 'ok');
+                                } catch (parseErr) {
+                                    logResult(`    [Error] Parsing ${internalFileName}: ${parseErr.message}`, 'error');
+                                    cardJsonError = `Error parsing card.json: ${parseErr.message}`;
+                                    hasError = true; // Mark overall error as card.json is crucial
+                                    fileHasError = true;
+                                }
+                            } else {
+                                // Log success for non-card.json files immediately
+                                logResult(`    [OK] Successfully processed ${internalFileName}`, 'ok');
+                            }
+                        }
+                        resolve(); // Resolve the promise for this file
+                    }
+                };
+
+                try {
+                    f.start();
+                } catch (startErr) {
+                     // Store start error details
+                     const errorMsg = `Starting decompression: ${startErr.message}`;
+                     rawErrorDetails.push({ uri: fileUri, error: errorMsg });
+                     hasError = true;
+                     fileHasError = true;
+                     if (isCardJson) cardJsonError = `Error starting card.json decompression: ${startErr.message}`;
+                     resolve(); // Resolve the promise even on start error
+                }
+            });
+
+            // Add promise to the correct list and ensure cardJsonPromise resolves
+            if (isCardJson) {
+                // When the promise for card.json processing completes, resolve the main cardJsonPromise
+                currentFilePromise.then(() => {
+                    cardJsonPromiseResolver(); // Resolve the dedicated promise for card.json
+                });
+            } else {
+                filePromises.push(currentFilePromise);
+            }
+        };
+        try {
+            logResult('Starting decompression process...');
+            // fflate in browser often works better with Uint8Array
+            unzip.push(new Uint8Array(fileData), true);
+            logResult('Finished pushing data to decompressor.');
+        } catch (pushErr) {
+            logResult(`[Error] Pushing data to decompressor: ${pushErr.message}`, 'error');
+            hasError = true;
+            errorDetails.push({ file: 'Overall Archive', error: pushErr.message });
+        }
+
+        try {
+            // Wait for card.json first, then other files
+            await cardJsonPromise;
+            logResult('card.json processing finished.');
+            await Promise.all(filePromises);
+            logResult('All other internal file processing finished.');
+        } catch (waitErr) {
+             // Should not happen with the setup, but good practice
+             logResult(`Error waiting for file processing: ${waitErr.message}`, 'error');
+             hasError = true;
+        }
+
+        // --- Report Results ---
+        const summary = document.createElement('p');
+        summary.classList.add('summary-message'); // Add class for styling
+
+        // Log card.json specific errors first if they occurred
+        if (cardJsonError) {
+             logResult(`[Critical Error] Problem with card.json: ${cardJsonError}`, 'error');
+             hasError = true; // Ensure overall status reflects this
+        }
+
+        // Process and log other errors using the manifest if available
+        console.log(rawErrorDetails.length, 'rawErrorDetails', rawErrorDetails);
+        rawErrorDetails.forEach(detail => {
+            let userFriendlyName = 'unknown';
+            if (cardManifest && cardManifest.data.assets) {
+                 // Find the asset in the manifest by URI
+                 const assetInfo = cardManifest.data.assets.find(asset => asset.uri === detail.uri);
+                 if (assetInfo && assetInfo.name) {
+                     userFriendlyName = assetInfo.name;
+                 }
+            }
+            // Log the enhanced error message
+            const displayUri = detail.uri.replace('embeded://', ''); // Make URI more readable
+            logResult(`- File: ${displayUri} (${userFriendlyName}) Error: ${detail.error}`, 'error');
+        });
+
+
+        if (hasError) {
+            summary.innerHTML = '--- Validation Failed ---';
+            summary.classList.add('error'); // Add error class for specific styling
+        } else {
+            summary.innerHTML = '--- Validation Successful ---';
+            summary.classList.add('success'); // Add success class for specific styling
+            // Log success message before the summary
+            logResult(`File "${file.name}" appears to be a valid archive.`);
+        }
+        resultsDiv.appendChild(summary); // Append styled summary at the end
+        resultsDiv.scrollTop = resultsDiv.scrollHeight; // Auto-scroll
+
+        validateButton.disabled = false;
+        fileInput.disabled = false;
+    }
+
+    function readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                resolve(event.target.result);
+            };
+            reader.onerror = (event) => {
+                reject(new Error(`File could not be read! Code ${event.target.error.code}`));
+            };
+            reader.readAsArrayBuffer(file);
+        });
+    }
+    </script>
+</body>
+</html>
