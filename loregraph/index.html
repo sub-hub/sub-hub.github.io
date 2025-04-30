@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Lorebook Visualizer</title>
+    <meta charset="utf-8">
+    <style>
+        /* Basic CSS for graph elements */
+        .node circle { 
+            stroke: #fff; 
+            stroke: #fff;
+            stroke-width: 1.5px;
+            transition: r 0.2s, stroke 0.2s, stroke-width 0.2s, fill 0.2s, opacity 0.2s;
+        }
+        .node.node-dimmed circle { /* Dim by changing fill and slight opacity */
+             fill: #e0e0e0 !important; /* Light gray fill */
+             stroke: #cccccc !important; /* Lighter gray stroke */
+              opacity: 0.7 !important;
+         }
+         .node.node-dimmed text {
+              opacity: 0.3 !important; /* Dim text more */
+              font-weight: normal !important; /* Ensure dimmed text is not bold */
+         }
+         .node.node-highlight-hovered circle {
+            fill: #00ffff !important; /* Cyan for hovered */
+            r: 12px !important;
+            stroke: #000000 !important; /* Black stroke for contrast */
+            stroke-width: 2.5px !important; /* Thicker stroke */
+            opacity: 1 !important; /* Ensure full opacity */
+        }
+        .node.node-highlight-source circle {
+            fill: #ff7777 !important; /* Slightly lighter red */
+            r: 10px !important;
+            stroke: #cc0000 !important; /* Darker red stroke */
+            stroke-width: 2px !important; /* Thicker stroke */
+            opacity: 1 !important; /* Ensure full opacity */
+        }
+        .node.node-highlight-target circle {
+            fill: #ffcc88 !important; /* Slightly lighter orange */
+            r: 10px !important;
+            stroke: #dd6600 !important; /* Darker orange stroke */
+            stroke-width: 2px !important; /* Thicker stroke */
+            opacity: 1 !important; /* Ensure full opacity */
+        }
+        .node.node-highlight-source text,
+        .node.node-highlight-target text {
+            font-weight: bold !important;
+            fill: #000 !important; /* Black text for readability */
+            opacity: 1 !important; /* Ensure full opacity */
+        }
+        .node.node-highlight-hovered text { /* Special style for hovered node text if needed */
+             font-weight: bold !important;
+             fill: #000 !important;
+             opacity: 1 !important;
+             /* font-size: 11px; */ /* Optional: slightly larger */
+        }
+        .node:not(.node-dimmed) text { /* Ensure text is visible on non-dimmed nodes */
+             opacity: 1 !important;
+        }
+        .node text {
+            font: 10px sans-serif;
+            pointer-events: none;
+            transition: opacity 0.2s; /* Add transition for text dimming */
+        }
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.2 !important; /* Make non-highlighted links much dimmer */
+            transition: stroke 0.2s, stroke-width 0.2s, stroke-opacity 0.2s;
+            marker-end: url(#arrowhead);
+        }
+        .link.link-highlight-incoming {
+            stroke: #ff0000 !important; /* Red for incoming */
+            stroke-width: 3px !important; /* Thicker */
+            marker-end: url(#arrowhead-red) !important;
+            stroke-opacity: 1 !important;
+        }
+        .link.link-highlight-outgoing {
+            stroke: #ff8800 !important; /* Orange for outgoing */
+            stroke-width: 3px !important; /* Thicker */
+            marker-end: url(#arrowhead-orange) !important;
+            stroke-opacity: 1 !important;
+        }
+       /* Default arrowhead color (already defined in app.js defs) */
+        marker#arrowhead path {
+            fill: #999;
+            /* transition: fill 0.2s; */ /* Transition might not be needed here if markers are swapped */
+        }
+        /* Removed ineffective CSS rules for dynamic arrowhead coloring based on stroke */
+        #tooltip {
+            position: absolute;
+            background-color: lightgray; 
+            border: 1px solid black; 
+            padding: 5px; 
+            display: none; 
+            pointer-events: none; 
+        }
+        svg { 
+            width: 90vw; 
+            height: 80vh; 
+            /* Make SVG fill most of the viewport */
+            width: 100vw; 
+            height: 100vh; 
+            border: none; /* Remove border */
+            box-sizing: border-box; /* Include padding/border in element's total width/height */
+            display: block; /* Ensure it takes block-level space */
+            margin: 0; /* Remove default margins */
+            padding: 0; /* Remove default padding */
+        }
+        /* Adjust body to remove margins/padding */
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent scrollbars if SVG fits perfectly */
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack elements vertically */
+            height: 100vh; /* Full viewport height */
+        }
+        /* Style for the input container */
+        #input-container {
+            padding: 5px 10px; /* Adjust padding */
+            background-color: #f0f0f0; /* Light background for the top bar */
+            border-bottom: 1px solid lightgrey;
+            flex-shrink: 0; /* Prevent this container from shrinking */
+            display: flex; /* Use flexbox for horizontal layout */
+            align-items: center; /* Align items vertically */
+            gap: 15px; /* Add space between control groups */
+            flex-wrap: wrap; /* Allow wrapping if space is tight */
+        }
+        #input-container > p { /* Target the paragraph specifically */
+            margin: 0; /* Remove default paragraph margin */
+            margin-right: 10px; /* Add some space after the text */
+        }
+        #input-container > div { /* Target the divs containing sliders */
+             display: flex; /* Make label, slider, value horizontal */
+             align-items: center; /* Align items in the div vertically */
+             gap: 5px; /* Space within the control group */
+        }
+        #input-container label {
+             white-space: nowrap; /* Prevent labels from wrapping */
+        }
+        #graphContainer {
+            flex-grow: 1; /* Allow SVG to take remaining space */
+            position: relative; /* Needed for absolute positioning of the button */
+            /* width and height are set in the svg style above */
+        }
+        /* Fullscreen button style */
+        #fullscreen-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255, 255, 255, 0.8);
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 5px;
+            cursor: pointer;
+            z-index: 5; /* Ensure it's above the SVG but below context menu/tooltip */
+            display: flex; /* Align icon */
+            align-items: center;
+            justify-content: center;
+        }
+        #fullscreen-btn svg {
+            width: 20px; /* Adjust icon size */
+            height: 20px;
+        }
+        #fullscreen-btn:hover {
+            background: rgba(240, 240, 240, 0.9);
+        }
+    </style>
+</head>
+<body>
+    <div id="input-container">
+        <p>Select lorebook:</p>
+        <input type="file" id="lorebookFile" accept=".json">
+        <!-- Slider controls now directly inside the flex container -->
+        <div>
+            <label for="nodeDistanceSlider">노드 거리:</label>
+            <input type="range" id="nodeDistanceSlider" min="50" max="500" value="200">
+            <span id="nodeDistanceValue">200</span>
+        </div>
+        <div>
+            <label for="linkThicknessSlider">노드 연결 두께:</label>
+            <input type="range" id="linkThicknessSlider" min="0.5" max="10" step="0.5" value="2">
+            <span id="linkThicknessValue">2</span>px
+        </div>
+        <div>
+            <label for="nodeSizeSlider">노드 크기:</label>
+            <input type="range" id="nodeSizeSlider" min="2" max="20" value="8">
+            <span id="nodeSizeValue">8</span>
+        </div>
+    </div>
+    <div id="tooltip"></div>
+    <div id="contextMenu" style="position: absolute; background-color: white; border: 1px solid black; padding: 5px; display: none; z-index: 10;">
+        <ul>
+            <li id="showOutgoing" style="cursor: pointer; padding: 2px 5px;">Show Outgoing</li>
+            <li id="showIncoming" style="cursor: pointer; padding: 2px 5px;">Show Incoming</li>
+            <li id="showAll" style="cursor: pointer; padding: 2px 5px;">Show All</li>
+        </ul>
+    </div>
+    <!-- SVG container is now inside the body, styled by CSS -->
+    <svg id="graphContainer">
+         <!-- Fullscreen button will be positioned over this via CSS -->
+    </svg>
+    <button id="fullscreen-btn" title="Toggle Fullscreen">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 50 50"><path fill="#4d38e5" d="M2 15.758V2h14.299l5.262 4h-8.769L22 15.758L16.299 21L7 12.251v8.769zM33.752 2H48v13.809l-4 5.261v-8.768L33.997 21.51l-5.364-5.456L37.259 7H28.49zM48 33.752V48H33.701l-5.262-4h8.769L28 33.997l5.701-5.364L43 37.259V28.49zM16.248 48H2V33.701l4-5.262v8.769L16.003 28l5.364 5.701L12.741 43h8.769z"/></svg>
+    </button>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script> <!-- Or use a local copy -->
+    <script src="app.js"></script> <!-- Your JavaScript code -->
+</body>
+</html>
