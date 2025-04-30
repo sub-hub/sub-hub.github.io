@@ -21,6 +21,7 @@ let currentLinks = []; // Store currently displayed links
 let selectedNodeId = null; // Store the ID of the right-clicked node
 let simulation; // Store the simulation globally to stop/restart
 let linkElements, nodeElements; // Store selections for easy access
+let isTooltipPressed = false; // Track Tooltip key state
 
 fileInput.addEventListener("change", (event) => {
   const file = event.target.files[0];
@@ -470,6 +471,35 @@ function renderGraph(nodes, links) {
       .classed("node-highlight-hovered", true)
       .classed("node-dimmed", false); // Undim hovered node
 
+    // --- Tooltip Logic (Conditional) ---
+    console.log(isTooltipPressed)
+    if (isTooltipPressed) {
+        let tooltipContent = "";
+        const keys = [];
+        if (d.key) keys.push(...d.key.split(',').map(k => k.trim()).filter(k => k));
+        if (d.secondkey) keys.push(...d.secondkey.split(',').map(k => k.trim()).filter(k => k));
+
+        if (keys.length > 0) {
+            tooltipContent += `Keys: ${[...new Set(keys)].join(', ')}<br>`; // Show unique keys
+        }
+        if (d.insertionOrder !== undefined) { // Check if insertionOrder exists
+            tooltipContent += `Order: ${d.insertionOrder}`;
+        }
+
+        if (tooltipContent) { // Only display if there's something to show
+            tooltip
+                .style("display", "block")
+                .style("left", event.pageX + 10 + "px") // Offset slightly from cursor
+                .style("top", event.pageY + 10 + "px")
+                .html(tooltipContent);
+        } else {
+            tooltip.style("display", "none"); // Hide if Alt is pressed but node has no relevant data
+        }
+    } else {
+        tooltip.style("display", "none"); // Hide if Alt is not pressed
+    }
+    // --- End Tooltip Logic ---
+
     // --- End Node and Link Highlighting ---
   }
 
@@ -597,6 +627,24 @@ fullscreenBtn.addEventListener("click", () => {
         }
          // Optionally adjust SVG size or simulation on fullscreen exit
         // resizeGraph(); // Example function call
+    }
+});
+
+
+// --- Tooltip Key Listeners ---
+window.addEventListener('keydown', (event) => {
+    if (event.key === "c") {
+        isTooltipPressed = true;
+        // Potentially trigger a re-check if a node is currently hovered,
+        // but the mouseover event itself will handle showing the tooltip
+        // if the mouse is moved slightly while Alt is held.
+    }
+});
+
+window.addEventListener('keyup', (event) => {
+    if (event.key === "c") {
+        isTooltipPressed = false;
+        tooltip.style("display", "none"); // Hide tooltip immediately when Alt is released
     }
 });
 
