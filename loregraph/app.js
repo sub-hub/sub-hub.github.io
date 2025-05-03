@@ -353,7 +353,7 @@ function renderGraph(nodes, links) {
 
   node
     .append("text")
-    .text((d) => d.comment)
+    .text((d) => d.comment || d.key || "") // Use key as name if comment is empty
     .attr("x", 12)
     .attr("y", 3);
 
