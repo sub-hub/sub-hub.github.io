@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Size Analyzer</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+</head>
+<body>
+    <div id="app-container">
+        <header>
+            <h1>JSON Size Analyzer</h1>
+        </header>
+
+        <main>
+            <div id="upload-box">
+                <div id="drop-zone">
+                    <p>여기에 JSON 파일을 드래그 앤 드롭하거나, 아래 버튼을 클릭하여 선택하세요.</p>
+                    <input type="file" id="file-input" accept=".json" style="display: none;">
+                    <button id="upload-button">파일 선택</button>
+                    <button id="paste-clipboard-button"><span class="icon">📋</span> 클립보드에서 붙여넣기</button>
+                </div>
+            </div>
+
+            <div id="view-toggle-buttons" class="hidden">
+                <button id="toggle-tree-view" class="toggle-btn active" data-view="tree-panel">
+                    <span class="icon">📂</span> 구조 분석 (Tree View)
+                </button>
+                <button id="toggle-treemap-view" class="toggle-btn" data-view="treemap-panel">
+                    <span class="icon">📊</span> 크기 분포 (Treemap)
+                </button>
+            </div>
+
+            <div id="analysis-container">
+                <div class="panel hidden" id="tree-panel">
+                    <div class="panel-header">
+                        <div id="file-info"></div>
+                    </div>
+                    <div id="tree-container"></div>
+                </div>
+                <div class="panel hidden" id="treemap-panel">
+                    <div id="treemap-container"></div>
+                </div>
+            </div>
+            
+            <div id="loading-overlay" class="hidden">
+                <div class="spinner"></div>
+                <p>파일을 분석 중입니다...</p>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
