@@ -55,5 +55,28 @@
     </div>
 
     <script src="script.js"></script>
+    <script>
+        window.addEventListener('message', receiveData, false);
+
+        function receiveData(event) {
+            if (event.origin !== 'https://risuai.xyz') {
+                console.warn('Ignoring message from untrusted origin:', event.origin);
+                return;
+            }
+
+            const dbString = event.data;
+            
+            console.log('데이터를 성공적으로 수신했습니다.');
+
+            try {
+                const jsonData = JSON.parse(dbString);
+                window.handleReceivedData(dbString);
+                alert('Risu DB 데이터를 받아 분석을 시작합니다.');
+            } catch(e) {
+                console.error('수신한 데이터 파싱 오류:', e);
+                alert('수신한 데이터에 오류가 있습니다.');
+            }
+        }
+    </script>
 </body>
 </html>
