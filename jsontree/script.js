@@ -1,4 +1,4 @@
-const MAX_NAME_LENGTH = 10;
+const MAX_NAME_LENGTH = 20;
 document.addEventListener('DOMContentLoaded', () => {
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
